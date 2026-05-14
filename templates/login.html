@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Sign in — MindSpace{% endblock %}
+
+{% block content %}
+<section class="auth-wrap">
+    <div class="auth-card">
+        <div class="auth-icon">🌿</div>
+        <h2>Welcome back</h2>
+        <p class="auth-sub">Sign in with your anonymous username.</p>
+
+        <form id="loginForm" class="auth-form">
+            <label>Username</label>
+            <input type="text" id="username" required minlength="3" maxlength="30" autocomplete="off" />
+            <label>Password</label>
+            <input type="password" id="password" required minlength="6" autocomplete="current-password" />
+            <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+            <p class="auth-error" id="error" style="display:none;"></p>
+        </form>
+
+        <p class="auth-alt">
+            New here? <a href="/register">Create an anonymous account →</a>
+        </p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = document.getElementById("error");
+    err.style.display = "none";
+    try {
+        const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                username: document.getElementById("username").value.trim(),
+                password: document.getElementById("password").value,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        window.location.href = data.user.is_admin ? "/admin" : "/chat";
+    } catch (ex) {
+        err.textContent = ex.message;
+        err.style.display = "block";
+    }
+});
+</script>
+{% endblock %}

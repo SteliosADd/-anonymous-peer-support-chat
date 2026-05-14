@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Join — MindSpace{% endblock %}
+
+{% block content %}
+<section class="auth-wrap">
+    <div class="auth-card">
+        <div class="auth-icon">🌱</div>
+        <h2>Join anonymously</h2>
+        <p class="auth-sub">Pick a username and an avatar — that's all we need.</p>
+
+        <form id="registerForm" class="auth-form">
+            <label>Choose a username</label>
+            <input type="text" id="username" required minlength="3" maxlength="30" placeholder="e.g. quiet_river" autocomplete="off" />
+
+            <label>Choose a password</label>
+            <input type="password" id="password" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password" />
+
+            <label>Pick an avatar</label>
+            <div class="avatar-grid" id="avatarGrid"></div>
+
+            <button type="submit" class="btn btn-primary btn-block">Create account</button>
+            <p class="auth-error" id="error" style="display:none;"></p>
+        </form>
+
+        <p class="auth-alt">
+            Already have an account? <a href="/login">Sign in →</a>
+        </p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedAvatar = null;
+
+async function loadAvatars() {
+    const res = await fetch("/api/auth/avatars");
+    const data = await res.json();
+    const grid = document.getElementById("avatarGrid");
+    data.avatars.forEach((a, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "avatar-btn";
+        btn.textContent = a;
+        btn.addEventListener("click", () => {
+            document.querySelectorAll(".avatar-btn").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            selectedAvatar = a;
+        });
+        if (i === 0) { btn.classList.add("selected"); selectedAvatar = a; }
+        grid.appendChild(btn);
+    });
+}
+loadAvatars();
+
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = document.getElementById("error");
+    err.style.display = "none";
+    try {
+        const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                username: document.getElementById("username").value.trim(),
+                password: document.getElementById("password").value,
+                avatar: selectedAvatar,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Registration failed");
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        window.location.href = "/chat";
+    } catch (ex) {
+        err.textContent = ex.message;
+        err.style.display = "block";
+    }
+});
+</script>
+{% endblock %}

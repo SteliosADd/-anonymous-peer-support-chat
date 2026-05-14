@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Admin — MindSpace{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"
+        integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4"
+        crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<section class="admin-shell">
+    <header class="admin-head">
+        <h1>🛡️ Moderator Dashboard</h1>
+        <p>Review flagged messages, moderate users, monitor activity.</p>
+    </header>
+
+    <!-- Live stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><span class="stat-num" id="statTotalUsers">—</span><span class="stat-lbl">Users</span></div>
+        <div class="stat-card"><span class="stat-num" id="statOnline">—</span><span class="stat-lbl">Online now</span></div>
+        <div class="stat-card"><span class="stat-num" id="statMessages">—</span><span class="stat-lbl">Messages</span></div>
+        <div class="stat-card stat-warn"><span class="stat-num" id="statFlagged">—</span><span class="stat-lbl">Flagged</span></div>
+        <div class="stat-card"><span class="stat-num" id="statBlocked">—</span><span class="stat-lbl">Blocked</span></div>
+        <div class="stat-card"><span class="stat-num" id="statMuted">—</span><span class="stat-lbl">Muted</span></div>
+    </div>
+
+    <div class="admin-grid">
+        <!-- Flagged messages -->
+        <section class="admin-section">
+            <div class="section-head">
+                <h2>🚩 Flagged Messages</h2>
+                <span class="hint">Auto-detected by moderation</span>
+            </div>
+            <div id="flaggedList" class="flagged-list">
+                <p class="empty">Loading…</p>
+            </div>
+        </section>
+
+        <!-- User moderation -->
+        <section class="admin-section">
+            <div class="section-head">
+                <h2>👥 Users</h2>
+                <span class="hint">Block or mute as needed</span>
+            </div>
+            <div id="usersList" class="users-list">
+                <p class="empty">Loading…</p>
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

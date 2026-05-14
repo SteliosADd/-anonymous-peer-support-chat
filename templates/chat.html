@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Chat — MindSpace{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"
+        integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4"
+        crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<section class="chat-shell">
+    <!-- Sidebar: list of users to chat with -->
+    <aside class="chat-sidebar">
+        <div class="chat-sidebar-head">
+            <h3>People</h3>
+            <span class="hint">Tap someone to start a chat</span>
+        </div>
+        <div class="user-search">
+            <input type="text" id="userSearch" placeholder="Search users..." />
+        </div>
+        <ul class="user-list" id="userList"></ul>
+    </aside>
+
+    <!-- Main chat area -->
+    <section class="chat-main">
+        <header class="chat-header" id="chatHeader">
+            <div class="chat-header-empty">
+                <span class="empty-emoji">💬</span>
+                <p>Select someone to start a conversation</p>
+            </div>
+        </header>
+
+        <div class="chat-messages" id="messages"></div>
+
+        <div class="typing-row" id="typingRow" style="display:none;">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span id="typingText"></span>
+        </div>
+
+        <form class="chat-input" id="chatForm" style="display:none;">
+            <textarea id="messageInput" rows="1" placeholder="Type a kind message..." maxlength="2000"></textarea>
+            <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+    </section>
+</section>
+
+<!-- Crisis support modal — shown when moderation detects crisis keywords -->
+<div class="modal-backdrop" id="crisisModal" style="display:none;">
+    <div class="modal crisis-modal">
+        <div class="modal-icon">💜</div>
+        <h2>We're here for you</h2>
+        <p>
+            It sounds like you might be going through something really difficult right now.
+            Please remember: <strong>you are not alone</strong> and help is available
+            <strong>right now</strong>.
+        </p>
+        <div class="hotline-list">
+            <div class="hotline">
+                <strong>988</strong> — Suicide &amp; Crisis Lifeline (US, 24/7)
+            </div>
+            <div class="hotline">
+                <strong>Text HOME to 741741</strong> — Crisis Text Line
+            </div>
+            <div class="hotline">
+                <strong>116 123</strong> — Samaritans (UK &amp; Ireland)
+            </div>
+        </div>
+        <p class="modal-foot">If you're in immediate danger, please call your local emergency number.</p>
+        <div class="modal-actions">
+            <a href="/resources" class="btn btn-ghost">More resources</a>
+            <button class="btn btn-primary" id="closeCrisis">I understand</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}
