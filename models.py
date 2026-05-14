@@ -1,0 +1,74 @@
+"""
+Database models for MindSpace.
+
+We keep models small and focused. Users stay anonymous: only a chosen
+username and avatar identify them — no email or real name is stored.
+"""
+from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+
+
+class User(db.Model):
+    """An anonymous user account.
+
+    `username` is the only public identifier. `password_hash` is bcrypt'd
+    (see auth.py). We track moderation state with `is_blocked` / `is_muted`.
+    """
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(128), nullable=False)
+    avatar = db.Column(db.String(8), default="🌱")  # emoji-based avatar
+    is_admin = db.Column(db.Boolean, default=False)
+    is_blocked = db.Column(db.Boolean, default=False)
+    is_muted = db.Column(db.Boolean, default=False)
+    is_online = db.Column(db.Boolean, default=False)
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "avatar": self.avatar,
+            "is_admin": self.is_admin,
+            "is_blocked": self.is_blocked,
+            "is_muted": self.is_muted,
+            "is_online": self.is_online,
+            "last_seen": self.last_seen.isoformat() if self.last_seen else None,
+        }
+
+
+class Message(db.Model):
+    """A one-to-one chat message between two users."""
+    __tablename__ = "messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    is_flagged = db.Column(db.Boolean, default=False)
+    flag_reason = db.Column(db.String(200), nullable=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    sender = db.relationship("User", foreign_keys=[sender_id])
+    recipient = db.relationship("User", foreign_keys=[recipient_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "sender_id": self.sender_id,
+            "sender_username": self.sender.username if self.sender else None,
+            "sender_avatar": self.sender.avatar if self.sender else None,
+            "recipient_id": self.recipient_id,
+            "recipient_username": self.recipient.username if self.recipient else None,
+            "content": "[deleted by moderator]" if self.is_deleted else self.content,
+            "is_flagged": self.is_flagged,
+            "flag_reason": self.flag_reason,
+            "is_deleted": self.is_deleted,
+            "created_at": self.created_at.isoformat(),
+        }

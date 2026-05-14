@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+        <span class="hero-pill">🌱 A safer space to talk</span>
+        <h1>You're not alone. <span class="grad">Find support, anonymously.</span></h1>
+        <p class="hero-sub">
+            MindSpace is an anonymous peer-support chat. No real names, no tracking —
+            just a calm, private place to talk to someone who gets it. Messages are
+            gently monitored to keep everyone safe.
+        </p>
+        <div class="hero-cta">
+            <a href="/register" class="btn btn-primary">Join anonymously</a>
+            <a href="/resources" class="btn btn-ghost">Crisis resources →</a>
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>Fully anonymous</h3>
+        <p>No emails or real names. Pick a username, pick an avatar, and you're in.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Real-time chat</h3>
+        <p>One-to-one private messaging with typing indicators and online status.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <h3>AI moderation</h3>
+        <p>Smart keyword detection flags risky messages and offers crisis resources.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🌿</div>
+        <h3>Mental wellness</h3>
+        <p>Curated tips, hotlines, and links to professional support — always one click away.</p>
+    </div>
+</section>
+
+<section class="cta-strip">
+    <h2>Ready to talk to someone?</h2>
+    <p>It only takes a moment to create an anonymous account.</p>
+    <a href="/register" class="btn btn-primary">Get started</a>
+</section>
+{% endblock %}
