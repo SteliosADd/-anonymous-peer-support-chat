@@ -6,12 +6,14 @@ Socket.IO real-time chat, and serves the frontend templates.
 
 Run with:  python app.py
 """
+import sys
 from datetime import datetime
 
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, decode_token
+from sqlalchemy.exc import OperationalError
 
 from config import Config
 from models import db, User, Message
@@ -19,6 +21,43 @@ from auth import auth_bp, bcrypt
 from chat import chat_bp
 from admin import admin_bp
 from moderation import analyze_message
+
+
+def _init_database(app):
+    """Create tables and seed the default admin.
+
+    Wraps the call so we can show a friendly error if MySQL isn't
+    reachable, instead of a stack trace.
+    """
+    try:
+        with app.app_context():
+            db.create_all()
+            existing = User.query.filter_by(
+                username=Config.DEFAULT_ADMIN_USERNAME
+            ).first()
+            if not existing:
+                admin_user = User(
+                    username=Config.DEFAULT_ADMIN_USERNAME,
+                    password_hash=bcrypt.generate_password_hash(
+                        Config.DEFAULT_ADMIN_PASSWORD
+                    ).decode("utf-8"),
+                    avatar="🛡️",
+                    is_admin=True,
+                )
+                db.session.add(admin_user)
+                db.session.commit()
+    except OperationalError as e:
+        print("\n❌ Could not connect to the database.", file=sys.stderr)
+        print(f"   URI: {Config.SQLALCHEMY_DATABASE_URI}", file=sys.stderr)
+        print(f"   Error: {e.orig}\n", file=sys.stderr)
+        print("Tips:", file=sys.stderr)
+        print(" • Is MySQL running?  (e.g. `sudo service mysql start`)", file=sys.stderr)
+        print(" • Did you create the database?", file=sys.stderr)
+        print("     mysql -u root -p < schema.sql", file=sys.stderr)
+        print(" • Check your .env file (copy from .env.example)", file=sys.stderr)
+        print(" • For a quick local test without MySQL, run:", file=sys.stderr)
+        print("     USE_SQLITE=1 python app.py\n", file=sys.stderr)
+        raise SystemExit(1)
 
 
 def create_app():
@@ -62,26 +101,18 @@ def create_app():
     def admin_page():
         return render_template("admin.html")
 
-    # Set up DB and a default admin on first run
-    with app.app_context():
-        db.create_all()
-        if not User.query.filter_by(username=Config.DEFAULT_ADMIN_USERNAME).first():
-            admin_user = User(
-                username=Config.DEFAULT_ADMIN_USERNAME,
-                password_hash=bcrypt.generate_password_hash(
-                    Config.DEFAULT_ADMIN_PASSWORD
-                ).decode("utf-8"),
-                avatar="🛡️",
-                is_admin=True,
-            )
-            db.session.add(admin_user)
-            db.session.commit()
-
+    _init_database(app)
     return app
 
 
 app = create_app()
-socketio = SocketIO(app, cors_allowed_origins=Config.CORS_ALLOWED_ORIGINS)
+# `threading` async mode is the most portable: no eventlet/gevent native
+# build needed, works the same on Linux / macOS / Windows.
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=Config.CORS_ALLOWED_ORIGINS,
+    async_mode="threading",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -221,5 +252,19 @@ def on_typing(data):
 
 
 if __name__ == "__main__":
-    # Use 0.0.0.0 so the dev server is reachable from the host machine.
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True, allow_unsafe_werkzeug=True)
+    import os
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "5000"))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    print(f"\n🌿 MindSpace starting on http://{host}:{port}")
+    print(f"   Database: {Config.SQLALCHEMY_DATABASE_URI.split('@')[-1] if '@' in Config.SQLALCHEMY_DATABASE_URI else Config.SQLALCHEMY_DATABASE_URI}")
+    print(f"   Default admin: {Config.DEFAULT_ADMIN_USERNAME} / {Config.DEFAULT_ADMIN_PASSWORD}\n")
+    # `allow_unsafe_werkzeug` lets us use the dev server with threading
+    # mode in newer Werkzeug versions.
+    socketio.run(
+        app,
+        host=host,
+        port=port,
+        debug=debug,
+        allow_unsafe_werkzeug=True,
+    )
