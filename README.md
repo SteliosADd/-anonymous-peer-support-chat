@@ -1,4 +1,4 @@
-# 🌿 MindSpace — Anonymous Mental Health Support Chat
+# 🌿 Anonymous Mental Health Support Chat
 
 A safe, anonymous, real-time peer-support chat platform built with **Flask**,
 **Socket.IO**, and **JWT**. Users can talk to each other privately while
@@ -74,14 +74,14 @@ python app.py
 ```
 
 That's it. The app starts at **http://localhost:5000** using a local
-SQLite file (`mindspace.db`) created on first launch — no database
+SQLite file (`support_chat.db`) created on first launch — no database
 server required.
 
 You should see:
 
 ```
-🌿 MindSpace starting on http://0.0.0.0:5000
-   Database: sqlite:///mindspace.db
+🌿 Anonymous Mental Health Support Chat starting on http://0.0.0.0:5000
+   Database: sqlite:///support_chat.db
    Default admin: admin / admin123
  * Running on http://127.0.0.1:5000
 ```
@@ -121,8 +121,8 @@ sudo apt install mysql-server && sudo service mysql start
 ```bash
 mysql -u root -p < schema.sql
 ```
-Creates database `mindspace` (utf8mb4 → emoji avatars work) and user
-`mindspace` with password `mindspace_pass`. Change before deploying.
+Creates database `support_chat` (utf8mb4 → emoji avatars work) and user
+`support_chat` with password `support_chat_pass`. Change before deploying.
 
 **c.** Enable MySQL via env variables — copy the example file:
 ```bash
@@ -173,7 +173,7 @@ Tables (`users`, `messages`) are auto-created on first launch.
 
 ## 🔐 Privacy & ethics
 
-MindSpace is designed **privacy-first**:
+This project is designed **privacy-first**:
 
 - No emails, IP logs, or analytics are collected.
 - Usernames are user-chosen; the database stores nothing that ties an

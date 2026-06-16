@@ -1,5 +1,5 @@
 """
-Database models for MindSpace.
+Database models for the Anonymous Mental Health Support Chat.
 
 We keep models small and focused. Users stay anonymous: only a chosen
 username and avatar identify them — no email or real name is stored.
