@@ -52,14 +52,14 @@ professional resources.
 |-------------|-------|
 | Backend     | Flask, Flask-SocketIO, Flask-JWT-Extended, Flask-Bcrypt, SQLAlchemy |
 | Real-time   | Socket.IO (server + client) |
-| Database    | **MySQL** via PyMySQL (SQLite fallback available for quick tests) |
+| Database    | **SQLite** out-of-the-box, **MySQL** opt-in via env (PyMySQL driver) |
 | Frontend    | HTML, Vanilla JS, modern CSS (no framework — beginner-friendly) |
 
 ---
 
 ## 🚀 Getting started
 
-### 1. Clone and install Python deps
+### 1. Clone and install
 ```bash
 git clone <your-repo-url>
 cd -anonymous-peer-support-chat
@@ -68,75 +68,35 @@ source .venv/bin/activate        # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Set up MySQL
-
-**a.** Install MySQL (or MariaDB) — on Ubuntu/Debian:
-
-```bash
-sudo apt install mysql-server
-sudo service mysql start
-```
-
-…on macOS (Homebrew):
-
-```bash
-brew install mysql && brew services start mysql
-```
-
-…on Windows: install MySQL from <https://dev.mysql.com/downloads/installer/>.
-
-**b.** Create the `mindspace` database and a dedicated app user — there's
-a ready-made script in `schema.sql`:
-
-```bash
-mysql -u root -p < schema.sql
-```
-
-This creates:
-- Database `mindspace` (utf8mb4 — so emoji avatars work)
-- User `mindspace` with password `mindspace_pass` (change in production!)
-- All needed privileges
-
-> The actual tables (`users`, `messages`) are created automatically by
-> SQLAlchemy the first time the app starts — no further DDL needed.
-
-### 3. Configure environment
-Copy the example file and edit the values:
-
-```bash
-cp .env.example .env
-# then edit .env in your editor of choice
-```
-
-At a minimum, set the MySQL credentials and the two secret keys.
-
-### 4. Run
+### 2. Run
 ```bash
 python app.py
 ```
 
-You should see something like:
+That's it. The app starts at **http://localhost:5000** using a local
+SQLite file (`mindspace.db`) created on first launch — no database
+server required.
+
+You should see:
 
 ```
 🌿 MindSpace starting on http://0.0.0.0:5000
-   Database: localhost:3306/mindspace?charset=utf8mb4
+   Database: sqlite:///mindspace.db
    Default admin: admin / admin123
  * Running on http://127.0.0.1:5000
 ```
 
-Open **http://localhost:5000** in your browser.
-
-### 5. Default admin credentials
+### 3. Default admin credentials
 | Username | Password |
 |----------|----------|
 | `admin`  | `admin123` |
 
-> ⚠️ **Change these immediately in production** via `DEFAULT_ADMIN_USERNAME`
-> and `DEFAULT_ADMIN_PASSWORD` in your `.env`.
+> ⚠️ **Change these in production** via `DEFAULT_ADMIN_USERNAME` and
+> `DEFAULT_ADMIN_PASSWORD` env variables (or a `.env` file).
 
-### 6. Try it out
+### 4. Try it out
 1. Open two browser windows (one normal, one private/incognito).
-2. Register two users in each.
+2. Register two users.
 3. Start a chat from `/chat` — typing indicators and live status work
    across both windows.
 4. Send a message containing `"I feel depressed"` — admin dashboard logs
@@ -145,16 +105,37 @@ Open **http://localhost:5000** in your browser.
    modal pops up immediately.
 6. Log in as `admin` to see the moderator dashboard at `/admin`.
 
-### 🪶 Don't have MySQL yet? Quick test with SQLite
-If you just want to try the app first without installing MySQL, set the
-fallback flag:
+---
 
+## 🐬 Optional: switch to MySQL
+
+For deployment or if your assignment requires MySQL, just flip a flag.
+
+**a.** Install MySQL (Ubuntu/Debian):
 ```bash
-USE_SQLITE=1 python app.py
+sudo apt install mysql-server && sudo service mysql start
+```
+…or on macOS: `brew install mysql && brew services start mysql`.
+
+**b.** Bootstrap the database + app user (script provided):
+```bash
+mysql -u root -p < schema.sql
+```
+Creates database `mindspace` (utf8mb4 → emoji avatars work) and user
+`mindspace` with password `mindspace_pass`. Change before deploying.
+
+**c.** Enable MySQL via env variables — copy the example file:
+```bash
+cp .env.example .env
+```
+…then uncomment the `USE_MYSQL=1` line plus the `MYSQL_*` block in `.env`.
+
+**d.** Run:
+```bash
+python app.py
 ```
 
-This creates a local `mindspace.db` file — handy for development, but
-**don't use it in production**.
+Tables (`users`, `messages`) are auto-created on first launch.
 
 ---
 
