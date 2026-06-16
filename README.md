@@ -52,14 +52,14 @@ professional resources.
 |-------------|-------|
 | Backend     | Flask, Flask-SocketIO, Flask-JWT-Extended, Flask-Bcrypt, SQLAlchemy |
 | Real-time   | Socket.IO (server + client) |
-| Database    | SQLite (zero-setup; swap to Postgres via `DATABASE_URL`) |
+| Database    | **MySQL** via PyMySQL (SQLite fallback available for quick tests) |
 | Frontend    | HTML, Vanilla JS, modern CSS (no framework — beginner-friendly) |
 
 ---
 
 ## 🚀 Getting started
 
-### 1. Clone and install
+### 1. Clone and install Python deps
 ```bash
 git clone <your-repo-url>
 cd -anonymous-peer-support-chat
@@ -68,25 +68,73 @@ source .venv/bin/activate        # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Run
+### 2. Set up MySQL
+
+**a.** Install MySQL (or MariaDB) — on Ubuntu/Debian:
+
+```bash
+sudo apt install mysql-server
+sudo service mysql start
+```
+
+…on macOS (Homebrew):
+
+```bash
+brew install mysql && brew services start mysql
+```
+
+…on Windows: install MySQL from <https://dev.mysql.com/downloads/installer/>.
+
+**b.** Create the `mindspace` database and a dedicated app user — there's
+a ready-made script in `schema.sql`:
+
+```bash
+mysql -u root -p < schema.sql
+```
+
+This creates:
+- Database `mindspace` (utf8mb4 — so emoji avatars work)
+- User `mindspace` with password `mindspace_pass` (change in production!)
+- All needed privileges
+
+> The actual tables (`users`, `messages`) are created automatically by
+> SQLAlchemy the first time the app starts — no further DDL needed.
+
+### 3. Configure environment
+Copy the example file and edit the values:
+
+```bash
+cp .env.example .env
+# then edit .env in your editor of choice
+```
+
+At a minimum, set the MySQL credentials and the two secret keys.
+
+### 4. Run
 ```bash
 python app.py
 ```
 
-The app starts at **http://localhost:5000**. The SQLite database
-(`mindspace.db`) is created automatically on first run, along with a default
-admin account.
+You should see something like:
 
-### 3. Default admin credentials
+```
+🌿 MindSpace starting on http://0.0.0.0:5000
+   Database: localhost:3306/mindspace?charset=utf8mb4
+   Default admin: admin / admin123
+ * Running on http://127.0.0.1:5000
+```
+
+Open **http://localhost:5000** in your browser.
+
+### 5. Default admin credentials
 | Username | Password |
 |----------|----------|
 | `admin`  | `admin123` |
 
-> ⚠️ **Change these immediately in production.** Edit `config.py` or set
-> `DEFAULT_ADMIN_USERNAME` / `DEFAULT_ADMIN_PASSWORD` as environment
-> variables before first launch.
+> ⚠️ **Change these immediately in production** via `DEFAULT_ADMIN_USERNAME`
+> and `DEFAULT_ADMIN_PASSWORD` in your `.env`.
 
-### 4. Try it out
+### 6. Try it out
 1. Open two browser windows (one normal, one private/incognito).
 2. Register two users in each.
 3. Start a chat from `/chat` — typing indicators and live status work
@@ -97,6 +145,17 @@ admin account.
    modal pops up immediately.
 6. Log in as `admin` to see the moderator dashboard at `/admin`.
 
+### 🪶 Don't have MySQL yet? Quick test with SQLite
+If you just want to try the app first without installing MySQL, set the
+fallback flag:
+
+```bash
+USE_SQLITE=1 python app.py
+```
+
+This creates a local `mindspace.db` file — handy for development, but
+**don't use it in production**.
+
 ---
 
 ## 📂 Project structure
@@ -104,12 +163,14 @@ admin account.
 ```
 .
 ├── app.py              # Flask app + Socket.IO event handlers
-├── config.py           # Centralized config (secrets, DB URL, JWT)
+├── config.py           # Centralized config (env-driven; MySQL by default)
 ├── models.py           # SQLAlchemy models: User, Message
 ├── auth.py             # /api/auth — register, login, me
 ├── chat.py             # /api/chat — user list, message history
 ├── admin.py            # /api/admin — moderation endpoints (admin-only)
 ├── moderation.py       # Keyword-based risk detection
+├── schema.sql          # MySQL database + app-user bootstrap
+├── .env.example        # Sample config file — copy to `.env`
 ├── requirements.txt
 ├── templates/          # Jinja templates (server-rendered HTML shells)
 │   ├── base.html
@@ -152,7 +213,8 @@ users to licensed professionals and certified hotlines.
   `DISTRESS_KEYWORDS` in `moderation.py`.
 - **Change the look**: tweak the CSS variables at the top of
   `static/css/style.css` (palette, radii, shadows).
-- **Swap to Postgres**: set `DATABASE_URL=postgresql://…` before running.
+- **Use a custom database URL**: set `DATABASE_URL=mysql+pymysql://…`
+  (or any other SQLAlchemy URL) in `.env` to override the MYSQL_* settings.
 
 ---
 
