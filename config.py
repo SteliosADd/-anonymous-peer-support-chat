@@ -41,16 +41,15 @@ class Config:
     # ---- Database ---------------------------------------------------------
     # Priority order:
     #   1. Full `DATABASE_URL` (e.g. mysql+pymysql://user:pass@host/db)
-    #   2. MYSQL_* individual variables → MySQL URI
-    #   3. Fallback to SQLite (handy for first-time local testing only)
-    #
-    # Set `USE_SQLITE=1` to force the SQLite fallback explicitly.
+    #   2. `USE_MYSQL=1` → build MySQL URI from MYSQL_* env variables
+    #   3. Default: local SQLite file (zero setup — perfect for the
+    #      university project / quick local dev)
     if os.environ.get("DATABASE_URL"):
         SQLALCHEMY_DATABASE_URI = os.environ["DATABASE_URL"]
-    elif os.environ.get("USE_SQLITE") == "1":
-        SQLALCHEMY_DATABASE_URI = "sqlite:///mindspace.db"
-    else:
+    elif os.environ.get("USE_MYSQL") == "1":
         SQLALCHEMY_DATABASE_URI = _build_mysql_uri()
+    else:
+        SQLALCHEMY_DATABASE_URI = "sqlite:///mindspace.db"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Recycle connections — MySQL drops idle connections after 8h by default,

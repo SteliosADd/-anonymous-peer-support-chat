@@ -51,12 +51,12 @@ def _init_database(app):
         print(f"   URI: {Config.SQLALCHEMY_DATABASE_URI}", file=sys.stderr)
         print(f"   Error: {e.orig}\n", file=sys.stderr)
         print("Tips:", file=sys.stderr)
-        print(" • Is MySQL running?  (e.g. `sudo service mysql start`)", file=sys.stderr)
-        print(" • Did you create the database?", file=sys.stderr)
+        print(" • Default is SQLite — just run `python app.py`, no setup needed.", file=sys.stderr)
+        print(" • If you set USE_MYSQL=1, make sure MySQL is running:", file=sys.stderr)
+        print("     sudo service mysql start", file=sys.stderr)
+        print(" • And that you've created the database + user:", file=sys.stderr)
         print("     mysql -u root -p < schema.sql", file=sys.stderr)
-        print(" • Check your .env file (copy from .env.example)", file=sys.stderr)
-        print(" • For a quick local test without MySQL, run:", file=sys.stderr)
-        print("     USE_SQLITE=1 python app.py\n", file=sys.stderr)
+        print(" • Check your .env file (copy from .env.example).\n", file=sys.stderr)
         raise SystemExit(1)
 
 
