@@ -1,5 +1,5 @@
 """
-MindSpace — Anonymous Mental Health Support Chat
+Anonymous Mental Health Support Chat
 
 Main Flask application: wires up the database, JWT auth, REST blueprints,
 Socket.IO real-time chat, and serves the frontend templates.
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "5000"))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
-    print(f"\n🌿 MindSpace starting on http://{host}:{port}")
+    print(f"\n🌿 Anonymous Mental Health Support Chat starting on http://{host}:{port}")
     print(f"   Database: {Config.SQLALCHEMY_DATABASE_URI.split('@')[-1] if '@' in Config.SQLALCHEMY_DATABASE_URI else Config.SQLALCHEMY_DATABASE_URI}")
     print(f"   Default admin: {Config.DEFAULT_ADMIN_USERNAME} / {Config.DEFAULT_ADMIN_PASSWORD}\n")
     # `allow_unsafe_werkzeug` lets us use the dev server with threading

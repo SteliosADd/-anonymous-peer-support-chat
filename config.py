@@ -26,7 +26,7 @@ def _build_mysql_uri() -> str:
     password = os.environ.get("MYSQL_PASSWORD", "")
     host = os.environ.get("MYSQL_HOST", "localhost")
     port = os.environ.get("MYSQL_PORT", "3306")
-    db = os.environ.get("MYSQL_DB", "mindspace")
+    db = os.environ.get("MYSQL_DB", "support_chat")
     # The `charset=utf8mb4` part lets the DB store emoji avatars correctly.
     return f"mysql+pymysql://{user}:{password}@{host}:{port}/{db}?charset=utf8mb4"
 
@@ -49,7 +49,7 @@ class Config:
     elif os.environ.get("USE_MYSQL") == "1":
         SQLALCHEMY_DATABASE_URI = _build_mysql_uri()
     else:
-        SQLALCHEMY_DATABASE_URI = "sqlite:///mindspace.db"
+        SQLALCHEMY_DATABASE_URI = "sqlite:///support_chat.db"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Recycle connections — MySQL drops idle connections after 8h by default,
