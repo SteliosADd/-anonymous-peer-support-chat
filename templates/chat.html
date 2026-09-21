@@ -16,9 +16,9 @@
             <span class="hint">Tap someone to start a chat</span>
         </div>
         <div class="user-search">
-            <input type="text" id="userSearch" placeholder="Search users..." />
+            <input type="text" id="userSearch" placeholder="Search users..." aria-label="Search users" />
         </div>
-        <ul class="user-list" id="userList"></ul>
+        <ul class="user-list" id="userList" aria-label="People"></ul>
         <button type="button" class="help-btn" id="helpBtn">
             <span class="help-icon">🆘</span>
             <span>
@@ -37,7 +37,7 @@
             </div>
         </header>
 
-        <div class="chat-messages" id="messages"></div>
+        <div class="chat-messages" id="messages" role="log" aria-live="polite" aria-label="Conversation"></div>
 
         <div class="typing-row" id="typingRow" style="display:none;">
             <span class="typing-dot"></span>
@@ -47,7 +47,7 @@
         </div>
 
         <form class="chat-input" id="chatForm" style="display:none;">
-            <textarea id="messageInput" rows="1" placeholder="Type a kind message..." maxlength="2000"></textarea>
+            <textarea id="messageInput" rows="1" placeholder="Type a kind message..." maxlength="2000" aria-label="Message"></textarea>
             <button type="submit" class="btn btn-primary">Send</button>
         </form>
     </section>
@@ -55,7 +55,7 @@
 
 <!-- Crisis support modal — shown when moderation detects crisis keywords -->
 <div class="modal-backdrop" id="crisisModal" style="display:none;">
-    <div class="modal crisis-modal">
+    <div class="modal crisis-modal" role="dialog" aria-modal="true" aria-labelledby="crisisTitle">
         <div class="modal-icon">💜</div>
         <h2 id="crisisTitle">Are you okay right now?</h2>
         <p>
@@ -84,4 +84,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tour.js') }}"></script>
 {% endblock %}

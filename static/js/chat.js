@@ -35,8 +35,34 @@ socket.on("connect_error", (err) => {
     showToast("Connection failed: " + err.message, "error");
 });
 
+// ---- Loading placeholders and empty states ----
+const shellEl = document.querySelector(".chat-shell");
+const EMPTY_HEADER = chatHeaderEl.innerHTML;   // "Select someone…" markup from chat.html
+const mobileQuery = window.matchMedia("(max-width: 768px)");
+
+function userSkeleton() {
+    return Array.from({ length: 6 }, () => `
+        <li class="skeleton-row" aria-hidden="true">
+            <div class="sk sk-avatar"></div>
+            <div class="sk-lines"><div class="sk sk-line"></div><div class="sk sk-line short"></div></div>
+        </li>`).join("");
+}
+
+function messageSkeleton() {
+    const sides = ["recv", "sent", "recv", "sent", "recv"];
+    return `<div class="msg-skeleton" aria-hidden="true">${sides
+        .map((s, i) => `<div class="sk sk-bubble ${s}" style="width:${[52, 38, 64, 44, 30][i]}%"></div>`)
+        .join("")}</div>`;
+}
+
+function emptyState(icon, title, text) {
+    return `<li class="empty-state"><span class="empty-state-icon">${icon}</span>
+        <strong>${title}</strong><p>${text}</p></li>`;
+}
+
 // ---- User list ----
 async function loadUsers() {
+    if (!allUsers.length) userListEl.innerHTML = userSkeleton();
     try {
         const res = await apiFetch("/api/chat/users");
         if (!res.ok) return;
@@ -56,11 +82,17 @@ function renderUserList() {
 
     userListEl.innerHTML = "";
     if (filtered.length === 0) {
-        userListEl.innerHTML = '<li style="padding:20px;color:var(--text-muted);text-align:center;">No users found</li>';
+        userListEl.innerHTML = q
+            ? emptyState("🔍", "No one matches that", "Try a different name.")
+            : emptyState("🌱", "It's quiet for now", "No one else has joined yet. Check back soon, or share the app with a friend.");
         return;
     }
     filtered.forEach((u) => {
         const li = document.createElement("li");
+        li.tabIndex = 0;
+        li.setAttribute("role", "button");
+        li.setAttribute("aria-label", `Chat with ${u.username}, ${u.is_online ? "online" : "offline"}` +
+            (u.unread ? `, ${u.unread} unread` : ""));
         if (activeChatUser && activeChatUser.id === u.id) li.classList.add("active");
         const badge = u.unread ? `<span class="unread-badge">${u.unread > 99 ? "99+" : u.unread}</span>` : "";
         li.innerHTML = `
@@ -73,6 +105,12 @@ function renderUserList() {
             <div class="online-dot ${u.is_online ? "online" : ""}"></div>
         `;
         li.addEventListener("click", () => selectChat(u));
+        li.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                selectChat(u);
+            }
+        });
         userListEl.appendChild(li);
     });
 }
@@ -86,6 +124,7 @@ async function selectChat(user) {
     renderUserList();
 
     chatHeaderEl.innerHTML = `
+        <button type="button" class="chat-back" id="chatBack" aria-label="Back to people">←</button>
         <div class="user-avatar">${user.avatar || "🌱"}</div>
         <div class="user-meta">
             <div class="user-name">${escapeHtml(user.username)}</div>
@@ -93,24 +132,61 @@ async function selectChat(user) {
         </div>
     `;
     chatFormEl.style.display = "flex";
-    messagesEl.innerHTML = '<p class="empty">Loading messages…</p>';
+    messagesEl.innerHTML = messageSkeleton();
+
+    // On phones the list and the conversation are separate screens.
+    // A history entry lets the phone's Back button return to the list.
+    if (mobileQuery.matches) {
+        shellEl.classList.add("in-conversation");
+        if (!history.state || !history.state.chat) history.pushState({ chat: true }, "");
+    }
 
     // Load history
     try {
         const res = await apiFetch(`/api/chat/history/${user.id}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+            messagesEl.innerHTML = '<p class="empty msg-empty">Could not load this conversation. Try again in a moment.</p>';
+            return;
+        }
         const data = await res.json();
         renderMessages(data.messages);
     } catch (e) {
         console.error(e);
+        messagesEl.innerHTML = '<p class="empty msg-empty">Could not load this conversation. Try again in a moment.</p>';
     }
 }
+
+// Back from a conversation to the people list (phones)
+function leaveConversation() {
+    // Tell the other person we stopped typing, then forget the conversation
+    if (activeChatUser) socket.emit("typing", { recipient_id: activeChatUser.id, is_typing: false });
+    clearTimeout(typingTimeout);
+    activeChatUser = null;
+    shellEl.classList.remove("in-conversation");
+    chatHeaderEl.innerHTML = EMPTY_HEADER;
+    messagesEl.innerHTML = "";
+    chatFormEl.style.display = "none";
+    typingRowEl.style.display = "none";
+    renderUserList();
+}
+
+chatHeaderEl.addEventListener("click", (e) => {
+    if (!e.target.closest("#chatBack")) return;
+    // Going through history keeps the Back button and the arrow in sync
+    if (history.state && history.state.chat) history.back();
+    else leaveConversation();
+});
+window.addEventListener("popstate", () => {
+    if (activeChatUser && shellEl.classList.contains("in-conversation")) leaveConversation();
+});
 
 function renderMessages(messages) {
     messagesEl.innerHTML = "";
     if (messages.length === 0) {
-        messagesEl.innerHTML = `<p class="empty" style="text-align:center;color:var(--text-muted);margin:auto;">
-            Say hello 👋 — be kind, you might be exactly what they needed today.</p>`;
+        messagesEl.innerHTML = `<div class="empty msg-empty">
+            <span class="empty-state-icon">👋</span>
+            <strong>Say hello</strong>
+            <p>Be kind. You might be exactly what they needed today.</p></div>`;
         return;
     }
     messages.forEach(appendMessage);
@@ -196,10 +272,12 @@ messageInputEl.addEventListener("keydown", (e) => {
 messageInputEl.addEventListener("input", () => {
     autoresizeTextarea();
     if (!activeChatUser) return;
-    socket.emit("typing", { recipient_id: activeChatUser.id, is_typing: true });
+    // Capture the id now: the user may leave the conversation before the timer fires
+    const recipientId = activeChatUser.id;
+    socket.emit("typing", { recipient_id: recipientId, is_typing: true });
     if (typingTimeout) clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
-        socket.emit("typing", { recipient_id: activeChatUser.id, is_typing: false });
+        socket.emit("typing", { recipient_id: recipientId, is_typing: false });
     }, 1200);
 });
 

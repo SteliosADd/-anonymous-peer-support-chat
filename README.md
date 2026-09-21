@@ -56,8 +56,22 @@ crisis are pointed to professional resources.
 - Dark and light themes with a toggle (follows your OS by default and
   remembers your choice).
 - Calming teal and amber palette, serif headings, animated aurora background.
-- Fully responsive (mobile / tablet / desktop).
+- Fully responsive. On phones the chat is two screens: the people list, then
+  the conversation with a back arrow (the phone's Back button works too).
 - Glass-morphism panels and smooth animations.
+- Three-step welcome tour on a user's first visit to the chat.
+- Skeleton loading and friendly empty states for the people list and messages.
+
+### ♿ Accessibility
+- Keyboard: every control is reachable, the people list opens with
+  Enter/Space, and a "Skip to content" link is the first Tab stop.
+- One visible focus ring on all focusable elements.
+- Screen readers: the conversation is a live region, the crisis popup and
+  the tour are labelled dialogs, and list rows announce name, status and
+  unread count.
+- `prefers-reduced-motion` turns off decorative animation (message pops,
+  breathing orb movement, skeleton shimmer, aurora).
+- Text colours meet WCAG AA (4.5:1) in both themes.
 
 ---
 
@@ -187,6 +201,7 @@ Tables (`users`, `messages`) are auto-created on first launch.
     └── js/
         ├── auth.js     # Shared auth helpers + navbar
         ├── theme.js    # Light/dark toggle
+        ├── tour.js     # First-visit welcome tour
         ├── chat.js     # Real-time chat client
         ├── mood.js     # Mood check-in + SVG chart
         ├── breathe.js  # Guided breathing exercise
