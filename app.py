@@ -7,7 +7,13 @@ Socket.IO real-time chat, and serves the frontend templates.
 Run with:  python app.py
 """
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
+
+# Reconfigure stdout/stderr to UTF-8 on Windows so emoji in print() don't crash.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
@@ -16,6 +22,7 @@ from flask_jwt_extended import JWTManager, decode_token
 from sqlalchemy.exc import OperationalError
 
 from config import Config
+from extensions import limiter
 from models import db, User, Message
 from auth import auth_bp, bcrypt
 from chat import chat_bp
@@ -32,6 +39,9 @@ def _init_database(app):
     try:
         with app.app_context():
             db.create_all()
+            # Reset stale online flags left over from a previous run.
+            User.query.filter_by(is_online=True).update({"is_online": False})
+            db.session.commit()
             existing = User.query.filter_by(
                 username=Config.DEFAULT_ADMIN_USERNAME
             ).first()
@@ -54,8 +64,6 @@ def _init_database(app):
         print(" • Default is SQLite — just run `python app.py`, no setup needed.", file=sys.stderr)
         print(" • If you set USE_MYSQL=1, make sure MySQL is running:", file=sys.stderr)
         print("     sudo service mysql start", file=sys.stderr)
-        print(" • And that you've created the database + user:", file=sys.stderr)
-        print("     mysql -u root -p < schema.sql", file=sys.stderr)
         print(" • Check your .env file (copy from .env.example).\n", file=sys.stderr)
         raise SystemExit(1)
 
@@ -69,6 +77,7 @@ def create_app():
     bcrypt.init_app(app)
     JWTManager(app)
     CORS(app)
+    limiter.init_app(app)
 
     # Register API blueprints
     app.register_blueprint(auth_bp)
@@ -126,6 +135,8 @@ socketio = SocketIO(
 
 # Map socket session id -> user id, so we know who disconnected.
 _sid_to_user = {}
+# Count of active sockets per user — so closing one tab of many doesn't mark the user offline.
+_user_socket_count = {}
 
 
 def _auth_socket(token):
@@ -135,7 +146,7 @@ def _auth_socket(token):
     try:
         decoded = decode_token(token)
         uid = int(decoded["sub"])
-        return User.query.get(uid)
+        return db.session.get(User, uid)
     except Exception:
         return None
 
@@ -153,13 +164,15 @@ def on_connect(auth):
         return False
 
     _sid_to_user[request.sid] = user.id
+    _user_socket_count[user.id] = _user_socket_count.get(user.id, 0) + 1
     join_room(f"user_{user.id}")
 
-    # Mark online and notify everyone — UI can update the user list.
-    user.is_online = True
-    user.last_seen = datetime.utcnow()
-    db.session.commit()
-    emit("user_status", {"user_id": user.id, "is_online": True}, broadcast=True)
+    # Only broadcast online when this is the user's FIRST socket (first tab/device).
+    if _user_socket_count[user.id] == 1:
+        user.is_online = True
+        user.last_seen = datetime.now(timezone.utc)
+        db.session.commit()
+        emit("user_status", {"user_id": user.id, "is_online": True}, broadcast=True)
 
 
 @socketio.on("disconnect")
@@ -167,12 +180,15 @@ def on_disconnect():
     uid = _sid_to_user.pop(request.sid, None)
     if uid is None:
         return
-    user = User.query.get(uid)
-    if user:
-        user.is_online = False
-        user.last_seen = datetime.utcnow()
-        db.session.commit()
-        emit("user_status", {"user_id": user.id, "is_online": False}, broadcast=True)
+    _user_socket_count[uid] = max(0, _user_socket_count.get(uid, 1) - 1)
+    # Only mark offline when ALL of the user's tabs/devices have disconnected.
+    if _user_socket_count[uid] == 0:
+        user = db.session.get(User, uid)
+        if user:
+            user.is_online = False
+            user.last_seen = datetime.now(timezone.utc)
+            db.session.commit()
+            emit("user_status", {"user_id": user.id, "is_online": False}, broadcast=True)
 
 
 @socketio.on("send_message")
@@ -182,7 +198,7 @@ def on_send_message(data):
     if not sender_id:
         return
 
-    sender = User.query.get(sender_id)
+    sender = db.session.get(User, sender_id)
     if not sender or sender.is_blocked:
         emit("error_message", {"error": "You are not allowed to send messages"})
         return
@@ -199,7 +215,7 @@ def on_send_message(data):
         emit("error_message", {"error": "Message is too long (max 2000 chars)"})
         return
 
-    recipient = User.query.get(recipient_id)
+    recipient = db.session.get(User, recipient_id)
     if not recipient:
         return
 
