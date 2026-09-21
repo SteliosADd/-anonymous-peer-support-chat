@@ -19,6 +19,13 @@
             <input type="text" id="userSearch" placeholder="Search users..." />
         </div>
         <ul class="user-list" id="userList"></ul>
+        <button type="button" class="help-btn" id="helpBtn">
+            <span class="help-icon">🆘</span>
+            <span>
+                <strong>Need help right now?</strong>
+                <small>Crisis lines, open 24/7</small>
+            </span>
+        </button>
     </aside>
 
     <!-- Main chat area -->
@@ -50,27 +57,26 @@
 <div class="modal-backdrop" id="crisisModal" style="display:none;">
     <div class="modal crisis-modal">
         <div class="modal-icon">💜</div>
-        <h2>We're here for you</h2>
+        <h2 id="crisisTitle">Are you okay right now?</h2>
         <p>
-            It sounds like you might be going through something really difficult right now.
-            Please remember: <strong>you are not alone</strong> and help is available
-            <strong>right now</strong>.
+            What you wrote sounds heavy. You don't have to sort it out alone.
+            A trained person can talk with you right now, day or night.
         </p>
         <div class="hotline-list">
-            <div class="hotline">
-                <strong>988</strong> — Suicide &amp; Crisis Lifeline (US, 24/7)
-            </div>
-            <div class="hotline">
-                <strong>Text HOME to 741741</strong> — Crisis Text Line
-            </div>
-            <div class="hotline">
-                <strong>116 123</strong> — Samaritans (UK &amp; Ireland)
-            </div>
+            <a class="hotline" href="tel:988">
+                <strong>988</strong> · Suicide &amp; Crisis Lifeline (US, 24/7)
+            </a>
+            <a class="hotline" href="sms:741741?body=HOME">
+                <strong>Text HOME to 741741</strong> · Crisis Text Line
+            </a>
+            <a class="hotline" href="tel:116123">
+                <strong>116 123</strong> · Samaritans (UK &amp; Ireland)
+            </a>
         </div>
-        <p class="modal-foot">If you're in immediate danger, please call your local emergency number.</p>
+        <p class="modal-foot">If you're in immediate danger, call your local emergency number.</p>
         <div class="modal-actions">
-            <a href="/resources" class="btn btn-ghost">More resources</a>
-            <button class="btn btn-primary" id="closeCrisis">I understand</button>
+            <a href="/resources" class="btn btn-ghost">More support</a>
+            <button class="btn btn-primary" id="closeCrisis">I'm okay for now</button>
         </div>
     </div>
 </div>

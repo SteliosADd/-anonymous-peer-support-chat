@@ -2,8 +2,8 @@
 
 A safe, anonymous, real-time peer-support chat platform built with **Flask**,
 **Socket.IO**, and **JWT**. Users can talk to each other privately while
-AI-assisted moderation flags risky messages and points people in crisis to
-professional resources.
+keyword-based moderation and user reports flag risky messages, and people in
+crisis are pointed to professional resources.
 
 > University project, category: **Health & Wellbeing**
 
@@ -18,16 +18,28 @@ professional resources.
 
 ### 💬 Real-time chat
 - Private 1-to-1 messaging via Socket.IO.
-- Typing indicators.
-- Live online/offline status.
-- Message timestamps.
+- Typing indicators and live online/offline status.
+- Unread badges in the sidebar, a `(n)` counter in the tab title, and a
+  soft sound for new messages.
+- Read receipts (`✓ Sent` → `✓✓ Seen`).
+- Blocked users can't be messaged and their history is hidden.
 
-### 🤖 AI-assisted moderation
-- Keyword detection for crisis phrases (e.g. *"suicide"*, *"hurt myself"*)
-  and distress signals (*"depressed"*, *"hopeless"*, …).
-- Flagged messages are surfaced on the admin dashboard.
-- When a crisis phrase is detected, a supportive popup with hotline numbers
-  appears immediately to the sender.
+### 🛡️ Safety tools
+- **Keyword moderation** (`moderation.py`): a list of crisis phrases (e.g.
+  *"suicide"*, *"hurt myself"*) and distress signals (*"depressed"*,
+  *"hopeless"*, …). This is simple string matching, not machine learning.
+- **Report button**: users can report any message they receive. Reports go
+  into the same flagged queue as keyword hits, with a live alert for admins.
+- **Crisis popup**: shown automatically when a crisis phrase is detected,
+  and on demand from the always-visible "Need help right now?" button.
+  Hotlines are tappable `tel:` / `sms:` links.
+
+### 🌤️ Wellbeing tools
+- **Daily mood check-in** (`/mood`): one private 1–5 entry per day, a
+  7-day chart, and a streak counter. No free text is stored, and even
+  admins cannot read entries.
+- **Guided breathing** (`/resources`): animated 4-7-8, box, and calm
+  patterns.
 
 ### 🛡️ Admin / moderator dashboard
 - Live stats (users, online, flagged, blocked, muted).
@@ -41,9 +53,11 @@ professional resources.
 - Helpful links to NAMI, Mind UK, 7 Cups, and more.
 
 ### 🎨 Modern UI
-- Dark mode by default, calming lavender/mint accent palette.
+- Dark and light themes with a toggle (follows your OS by default and
+  remembers your choice).
+- Calming teal and amber palette, serif headings, animated aurora background.
 - Fully responsive (mobile / tablet / desktop).
-- Smooth animations, glass-morphism navbar.
+- Glass-morphism panels and smooth animations.
 
 ---
 
@@ -146,9 +160,10 @@ Tables (`users`, `messages`) are auto-created on first launch.
 .
 ├── app.py              # Flask app + Socket.IO event handlers
 ├── config.py           # Centralized config (env-driven; MySQL by default)
-├── models.py           # SQLAlchemy models: User, Message
+├── models.py           # SQLAlchemy models: User, Message, MoodEntry
 ├── auth.py             # /api/auth — register, login, me
-├── chat.py             # /api/chat — user list, message history
+├── chat.py             # /api/chat — user list (with unread counts), history
+├── mood.py             # /api/mood — private daily mood check-ins
 ├── admin.py            # /api/admin — moderation endpoints (admin-only)
 ├── moderation.py       # Keyword-based risk detection
 ├── extensions.py       # Shared Flask extensions (rate limiter)
@@ -164,13 +179,17 @@ Tables (`users`, `messages`) are auto-created on first launch.
 │   ├── login.html
 │   ├── register.html
 │   ├── chat.html
+│   ├── mood.html
 │   ├── admin.html
 │   └── resources.html
 └── static/
-    ├── css/style.css   # Dark-mode design system
+    ├── css/style.css   # Design system (dark + light themes)
     └── js/
         ├── auth.js     # Shared auth helpers + navbar
+        ├── theme.js    # Light/dark toggle
         ├── chat.js     # Real-time chat client
+        ├── mood.js     # Mood check-in + SVG chart
+        ├── breathe.js  # Guided breathing exercise
         └── admin.js    # Admin dashboard client
 ```
 
@@ -201,8 +220,9 @@ pytest
 ```
 
 Tests spin up the app against a throwaway SQLite file (`tests/conftest.py`)
-and cover registration/login, admin access control, and the moderation
-keyword matcher.
+and cover registration/login, admin access control, the moderation keyword
+matcher, chat safety (reports, read receipts, blocked users), and the mood
+API.
 
 ---
 
@@ -228,7 +248,8 @@ keyword matcher.
 - **Add new moderation keywords**: edit `CRISIS_KEYWORDS` or
   `DISTRESS_KEYWORDS` in `moderation.py`.
 - **Change the look**: tweak the CSS variables at the top of
-  `static/css/style.css` (palette, radii, shadows).
+  `static/css/style.css`. The `:root` block is the dark theme and
+  `[data-theme="light"]` overrides it for the light theme.
 - **Use a custom database URL**: set `DATABASE_URL=mysql+pymysql://…`
   (or any other SQLAlchemy URL) in `.env` to override the MYSQL_* settings.
 

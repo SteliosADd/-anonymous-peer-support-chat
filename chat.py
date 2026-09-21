@@ -6,7 +6,7 @@ These routes serve helper data: lists of users, message history, etc.
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import or_, and_, desc
+from sqlalchemy import or_, and_, desc, func
 
 from models import db, User, Message
 
@@ -21,7 +21,20 @@ def list_users():
     users = User.query.filter(User.id != me_id, User.is_blocked == False).all()
     # Sort: online first, then by username
     users.sort(key=lambda u: (not u.is_online, u.username.lower()))
-    return jsonify({"users": [u.to_dict() for u in users]})
+
+    # Unread message count per sender, for the badges in the sidebar.
+    unread = dict(
+        db.session.query(Message.sender_id, func.count(Message.id))
+        .filter(Message.recipient_id == me_id, Message.read_at.is_(None))
+        .group_by(Message.sender_id)
+        .all()
+    )
+    result = []
+    for u in users:
+        d = u.to_dict()
+        d["unread"] = unread.get(u.id, 0)
+        result.append(d)
+    return jsonify({"users": result})
 
 
 @chat_bp.route("/history/<int:other_id>", methods=["GET"])
@@ -43,6 +56,8 @@ def conversation_history(other_id):
     )
 
     other = User.query.get_or_404(other_id)
+    if other.is_blocked:
+        return jsonify({"error": "This user is no longer available"}), 403
     return jsonify({
         "other_user": other.to_dict(),
         "messages": [m.to_dict() for m in messages],

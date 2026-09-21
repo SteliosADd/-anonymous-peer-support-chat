@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Check-in — Anonymous Mental Health Support Chat{% endblock %}
+
+{% block content %}
+<section class="mood-shell">
+    <header class="resources-head">
+        <span class="hero-pill">🌤️ Just for you</span>
+        <h1>How are you today?</h1>
+        <p class="resources-sub">
+            Tap the face that fits. Only you can see your check-ins,
+            and there is no note to write.
+        </p>
+    </header>
+
+    <div class="mood-card">
+        <div class="mood-picker" id="moodPicker" role="group" aria-label="Pick your mood">
+            <button type="button" class="mood-btn" data-mood="1"><span>😞</span><small>Very low</small></button>
+            <button type="button" class="mood-btn" data-mood="2"><span>😕</span><small>Low</small></button>
+            <button type="button" class="mood-btn" data-mood="3"><span>😐</span><small>Okay</small></button>
+            <button type="button" class="mood-btn" data-mood="4"><span>🙂</span><small>Good</small></button>
+            <button type="button" class="mood-btn" data-mood="5"><span>😄</span><small>Great</small></button>
+        </div>
+        <p class="mood-status" id="moodStatus"></p>
+    </div>
+
+    <div class="mood-card">
+        <div class="mood-card-head">
+            <h2>Your week</h2>
+            <span class="mood-streak" id="moodStreak"></span>
+        </div>
+        <div id="moodChart" class="mood-chart"></div>
+        <p class="mood-note" id="moodNote"></p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/mood.js') }}"></script>
+{% endblock %}

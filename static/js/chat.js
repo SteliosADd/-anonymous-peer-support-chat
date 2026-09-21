@@ -62,12 +62,14 @@ function renderUserList() {
     filtered.forEach((u) => {
         const li = document.createElement("li");
         if (activeChatUser && activeChatUser.id === u.id) li.classList.add("active");
+        const badge = u.unread ? `<span class="unread-badge">${u.unread > 99 ? "99+" : u.unread}</span>` : "";
         li.innerHTML = `
             <div class="user-avatar">${u.avatar || "🌱"}</div>
             <div class="user-meta">
                 <div class="user-name">${escapeHtml(u.username)}</div>
                 <div class="user-status ${u.is_online ? "online" : ""}">${u.is_online ? "Online" : "Offline"}</div>
             </div>
+            ${badge}
             <div class="online-dot ${u.is_online ? "online" : ""}"></div>
         `;
         li.addEventListener("click", () => selectChat(u));
@@ -80,6 +82,7 @@ userSearchEl.addEventListener("input", renderUserList);
 // ---- Selecting a conversation ----
 async function selectChat(user) {
     activeChatUser = user;
+    markConversationRead();
     renderUserList();
 
     chatHeaderEl.innerHTML = `
@@ -123,16 +126,42 @@ function appendMessage(msg) {
     if (msg.is_deleted) bubbleClasses += " deleted";
     else if (msg.is_flagged) bubbleClasses += " flagged";
 
-    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const time = parseServerDate(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const tick = isMine
+        ? `<span class="tick ${msg.read_at ? "seen" : ""}">${msg.read_at ? "✓✓ Seen" : "✓ Sent"}</span>`
+        : "";
+
+    const canReport = !isMine && !msg.is_deleted;
+    const reportBtn = canReport
+        ? `<button type="button" class="report-btn" data-report="${msg.id}" title="Report this message" aria-label="Report this message">⚑</button>`
+        : "";
 
     row.innerHTML = `
         <div>
             <div class="${bubbleClasses}">${escapeHtml(msg.content)}</div>
-            <div class="message-meta">${time}</div>
+            <div class="message-meta">${time} ${tick}</div>
         </div>
+        ${reportBtn}
     `;
     messagesEl.appendChild(row);
 }
+
+// Report a received message (event delegation: rows are created dynamically)
+messagesEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-report]");
+    if (!btn || btn.disabled) return;
+    if (!confirm("Report this message to the moderators?")) return;
+    btn.disabled = true;
+    socket.emit("report_message", { message_id: Number(btn.dataset.report) }, (res) => {
+        if (res && res.ok) {
+            btn.classList.add("done");
+            showToast("Thanks. A moderator will review this message.");
+        } else {
+            btn.disabled = false;
+            showToast((res && res.error) || "Could not send the report", "error");
+        }
+    });
+});
 
 function scrollToBottom() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -181,17 +210,47 @@ function autoresizeTextarea() {
 
 // ---- Incoming socket events ----
 socket.on("new_message", (msg) => {
-    if (
+    const incoming = msg.recipient_id === me.id;
+    const inActiveChat =
         activeChatUser &&
-        (msg.sender_id === activeChatUser.id || msg.recipient_id === activeChatUser.id)
-    ) {
+        (msg.sender_id === activeChatUser.id || msg.recipient_id === activeChatUser.id);
+
+    if (inActiveChat) {
+        // Drop the "say hello" placeholder before the first message lands
+        const empty = messagesEl.querySelector(".empty");
+        if (empty) empty.remove();
         appendMessage(msg);
         scrollToBottom();
-    } else if (msg.recipient_id === me.id) {
-        // Got a message from someone we're not currently chatting with
-        const sender = allUsers.find((u) => u.id === msg.sender_id);
-        showToast(`💬 New message from ${sender ? sender.username : "someone"}`);
     }
+
+    if (!incoming) return;
+
+    if (inActiveChat && !document.hidden) {
+        markConversationRead();
+    } else {
+        // Unread: count it, ping the user, and update the tab title
+        const sender = allUsers.find((u) => u.id === msg.sender_id);
+        if (sender) {
+            sender.unread = (sender.unread || 0) + 1;
+            renderUserList();
+        } else {
+            loadUsers();
+        }
+        if (!inActiveChat) {
+            showToast(`💬 New message from ${sender ? sender.username : "someone"}`);
+        }
+        playPing();
+        updateTabTitle();
+    }
+});
+
+// The other person opened our conversation: flip our ticks to "Seen"
+socket.on("messages_read", (data) => {
+    if (!activeChatUser || data.reader_id !== activeChatUser.id) return;
+    messagesEl.querySelectorAll(".message-row.sent .tick:not(.seen)").forEach((t) => {
+        t.classList.add("seen");
+        t.textContent = "✓✓ Seen";
+    });
 });
 
 socket.on("typing", (data) => {
@@ -231,9 +290,15 @@ socket.on("error_message", (data) => {
 // ---- Crisis warning popup ----
 // Fired by the server when the moderation module detects crisis keywords
 // in a message the user just sent.
-socket.on("crisis_warning", () => {
+socket.on("crisis_warning", openCrisisModal);
+
+// The same modal opens on demand from the always-visible help button
+document.getElementById("helpBtn").addEventListener("click", openCrisisModal);
+
+function openCrisisModal() {
     crisisModalEl.style.display = "grid";
-});
+    closeCrisisBtn.focus();
+}
 
 closeCrisisBtn.addEventListener("click", () => {
     crisisModalEl.style.display = "none";
@@ -241,6 +306,54 @@ closeCrisisBtn.addEventListener("click", () => {
 crisisModalEl.addEventListener("click", (e) => {
     if (e.target === crisisModalEl) crisisModalEl.style.display = "none";
 });
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") crisisModalEl.style.display = "none";
+});
+
+// ---- Read receipts, unread badges, tab title, sound ----
+const BASE_TITLE = document.title;
+
+function markConversationRead() {
+    if (!activeChatUser) return;
+    activeChatUser.unread = 0;
+    const cached = allUsers.find((u) => u.id === activeChatUser.id);
+    if (cached) cached.unread = 0;
+    socket.emit("mark_read", { other_id: activeChatUser.id });
+    renderUserList();
+    updateTabTitle();
+}
+
+function updateTabTitle() {
+    const total = allUsers.reduce((sum, u) => sum + (u.unread || 0), 0);
+    document.title = total ? `(${total}) ${BASE_TITLE}` : BASE_TITLE;
+}
+
+// Coming back to the tab counts as reading the open conversation
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && activeChatUser) markConversationRead();
+});
+
+// Short two-note ping via WebAudio (no audio file needed). Browsers block
+// audio until the user has interacted with the page, so failures are ignored.
+let audioCtx = null;
+function playPing() {
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const t = audioCtx.currentTime;
+        [660, 880].forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, t + i * 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.12, t + i * 0.09 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.09 + 0.18);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start(t + i * 0.09);
+            osc.stop(t + i * 0.09 + 0.2);
+        });
+    } catch (e) { /* audio unavailable — stay silent */ }
+}
 
 // ---- Utils ----
 function escapeHtml(text) {
@@ -249,5 +362,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// The server stores naive UTC timestamps; without a "Z" the browser would
+// read them as local time and show the wrong hour.
+function parseServerDate(iso) {
+    return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z");
+}
+
 // Kick everything off
-loadUsers();
+loadUsers().then(updateTabTitle);

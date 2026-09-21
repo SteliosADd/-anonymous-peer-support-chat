@@ -19,6 +19,7 @@ from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, decode_token
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError
 
 from config import Config
@@ -27,7 +28,19 @@ from models import db, User, Message
 from auth import auth_bp, bcrypt
 from chat import chat_bp
 from admin import admin_bp
+from mood import mood_bp
 from moderation import analyze_message
+
+
+def _ensure_read_at_column():
+    """Add messages.read_at to databases created before read receipts existed.
+
+    create_all() only creates missing tables, never missing columns.
+    """
+    cols = [c["name"] for c in inspect(db.engine).get_columns("messages")]
+    if "read_at" not in cols:
+        db.session.execute(text("ALTER TABLE messages ADD COLUMN read_at DATETIME NULL"))
+        db.session.commit()
 
 
 def _init_database(app):
@@ -39,6 +52,7 @@ def _init_database(app):
     try:
         with app.app_context():
             db.create_all()
+            _ensure_read_at_column()
             # Reset stale online flags left over from a previous run.
             User.query.filter_by(is_online=True).update({"is_online": False})
             db.session.commit()
@@ -83,6 +97,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(mood_bp)
 
     # Frontend page routes — Flask just renders the templates,
     # all data flows through the API + Socket.IO.
@@ -101,6 +116,10 @@ def create_app():
     @app.route("/chat")
     def chat_page():
         return render_template("chat.html")
+
+    @app.route("/mood")
+    def mood_page():
+        return render_template("mood.html")
 
     @app.route("/resources")
     def resources_page():
@@ -216,7 +235,10 @@ def on_send_message(data):
         return
 
     recipient = db.session.get(User, recipient_id)
-    if not recipient:
+    if not recipient or recipient.id == sender_id:
+        return
+    if recipient.is_blocked:
+        emit("error_message", {"error": "This user is no longer available"})
         return
 
     # Run the message through the moderation module.
@@ -251,6 +273,62 @@ def on_send_message(data):
     if mod["flagged"]:
         for admin_user in User.query.filter_by(is_admin=True).all():
             emit("new_flag", payload, room=f"user_{admin_user.id}")
+
+
+@socketio.on("report_message")
+def on_report_message(data):
+    """A user reports a message they received. It goes into the same
+    flagged queue moderators already review, and admins get a live ping.
+
+    Returns an ack dict so the client can show a confirmation.
+    """
+    reporter_id = _sid_to_user.get(request.sid)
+    msg_id = (data or {}).get("message_id")
+    if not reporter_id or not msg_id:
+        return {"ok": False, "error": "Invalid request"}
+
+    msg = db.session.get(Message, msg_id)
+    # Only the recipient can report; you can't report your own messages
+    # or conversations you aren't part of.
+    if not msg or msg.recipient_id != reporter_id:
+        return {"ok": False, "error": "Message not found"}
+
+    tag = "Reported by user"
+    if not msg.is_flagged:
+        msg.flag_reason = tag
+    elif tag not in (msg.flag_reason or ""):
+        msg.flag_reason = f"{msg.flag_reason} · {tag}"[:200]
+    msg.is_flagged = True
+    db.session.commit()
+
+    payload = msg.to_dict()
+    for admin_user in User.query.filter_by(is_admin=True).all():
+        emit("new_flag", payload, room=f"user_{admin_user.id}")
+    return {"ok": True}
+
+
+@socketio.on("mark_read")
+def on_mark_read(data):
+    """The user opened a conversation: stamp its unread messages as read
+    and tell the sender so their UI can show "Seen"."""
+    reader_id = _sid_to_user.get(request.sid)
+    other_id = (data or {}).get("other_id")
+    if not reader_id or not other_id:
+        return
+    now = datetime.utcnow()
+    unread = Message.query.filter_by(
+        sender_id=other_id, recipient_id=reader_id, read_at=None
+    ).all()
+    if not unread:
+        return
+    for m in unread:
+        m.read_at = now
+    db.session.commit()
+    emit(
+        "messages_read",
+        {"reader_id": reader_id, "read_at": now.isoformat()},
+        room=f"user_{other_id}",
+    )
 
 
 @socketio.on("typing")

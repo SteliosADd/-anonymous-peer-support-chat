@@ -2,48 +2,114 @@
 
 {% block content %}
 <section class="hero">
-    <div class="hero-glow"></div>
-    <div class="hero-content">
-        <span class="hero-pill">🌱 A safer space to talk</span>
-        <h1>You're not alone. <span class="grad">Find support, anonymously.</span></h1>
+    <div class="hero-text">
+        <span class="hero-pill"><span class="pulse-dot"></span> A safer space to talk</span>
+        <h1>You don't have to carry it alone.<br /><span class="grad">Talk anonymously.</span></h1>
         <p class="hero-sub">
-            This is an anonymous peer-support chat. No real names, no tracking —
-            just a calm, private place to talk to someone who gets it. Messages are
-            gently monitored to keep everyone safe.
+            No real names, no email, no tracking. Pick a username, find someone
+            who listens, and say what's on your mind. The app flags risky messages
+            and moderators review them, so the space stays safe for everyone.
         </p>
         <div class="hero-cta">
-            <a href="/register" class="btn btn-primary">Join anonymously</a>
-            <a href="/resources" class="btn btn-ghost">Crisis resources →</a>
+            <a href="/register" class="btn btn-primary btn-lg">Join anonymously</a>
+            <a href="/resources" class="btn btn-ghost btn-lg">Crisis resources →</a>
         </div>
+        <ul class="trust-row">
+            <li><strong>0</strong><span>emails asked</span></li>
+            <li><strong>24/7</strong><span>always open</span></li>
+            <li><strong>1:1</strong><span>private chats</span></li>
+        </ul>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+        <div class="chat-preview">
+            <div class="cp-head">
+                <span class="cp-avatar">🦋</span>
+                <div>
+                    <div class="cp-name">QuietRiver42</div>
+                    <div class="cp-status"><span class="online-dot online"></span> online</div>
+                </div>
+            </div>
+            <div class="cp-body">
+                <div class="cp-msg recv">Rough day today. Anyone around?</div>
+                <div class="cp-msg sent">I'm here. Want to talk about it? 💜</div>
+                <div class="cp-msg recv">Yeah. It helps just to say it out loud.</div>
+                <div class="cp-typing"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+        <div class="float-chip chip-1">🛡️ No real names</div>
+        <div class="float-chip chip-2">🌿 Feel heard</div>
     </div>
 </section>
 
 <section class="features">
-    <div class="feature-card">
-        <div class="feature-icon">🛡️</div>
-        <h3>Fully anonymous</h3>
-        <p>No emails or real names. Pick a username, pick an avatar, and you're in.</p>
+    <div class="feature-card reveal">
+        <div class="feature-icon i-lav">🛡️</div>
+        <h3>Anonymous from the start</h3>
+        <p>We give you a username. We never ask for your email or your real name.</p>
     </div>
-    <div class="feature-card">
-        <div class="feature-icon">💬</div>
-        <h3>Real-time chat</h3>
-        <p>One-to-one private messaging with typing indicators and online status.</p>
+    <div class="feature-card reveal">
+        <div class="feature-icon i-rose">💬</div>
+        <h3>Private one-to-one chat</h3>
+        <p>Talk with one person at a time. You see who's online and when they're typing.</p>
     </div>
-    <div class="feature-card">
-        <div class="feature-icon">🤖</div>
-        <h3>AI moderation</h3>
-        <p>Smart keyword detection flags risky messages and offers crisis resources.</p>
+    <div class="feature-card reveal">
+        <div class="feature-icon i-mint">🤖</div>
+        <h3>A safety net</h3>
+        <p>The app flags risky messages and shows crisis hotlines right away.</p>
     </div>
-    <div class="feature-card">
-        <div class="feature-icon">🌿</div>
-        <h3>Mental wellness</h3>
-        <p>Curated tips, hotlines, and links to professional support — always one click away.</p>
+    <div class="feature-card reveal">
+        <div class="feature-icon i-warm">🌿</div>
+        <h3>Help within reach</h3>
+        <p>Hotlines, wellness tips, and links to professional support sit one click away.</p>
     </div>
 </section>
 
-<section class="cta-strip">
-    <h2>Ready to talk to someone?</h2>
-    <p>It only takes a moment to create an anonymous account.</p>
-    <a href="/register" class="btn btn-primary">Get started</a>
+<section class="steps">
+    <h2 class="section-title reveal">How it works</h2>
+    <div class="steps-grid">
+        <div class="step reveal">
+            <span class="step-num">1</span>
+            <h3>Get a username</h3>
+            <p>We pick one for you. Shuffle until you like it.</p>
+        </div>
+        <div class="step reveal">
+            <span class="step-num">2</span>
+            <h3>Pick someone to talk to</h3>
+            <p>See who's online and start a private chat.</p>
+        </div>
+        <div class="step reveal">
+            <span class="step-num">3</span>
+            <h3>Say what's on your mind</h3>
+            <p>Go at your own pace. Crisis resources stay a click away.</p>
+        </div>
+    </div>
 </section>
+
+<section class="cta-strip reveal">
+    <h2>Ready to talk?</h2>
+    <p>Making an account takes about a minute.</p>
+    <a href="/register" class="btn btn-primary btn-lg">Get started</a>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+        els.forEach(function (el) { el.classList.add('in'); });
+        return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        });
+    }, { threshold: 0.15 });
+    els.forEach(function (el, i) {
+        el.style.transitionDelay = (i % 4) * 80 + 'ms';
+        io.observe(el);
+    });
+})();
+</script>
 {% endblock %}

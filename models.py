@@ -43,6 +43,25 @@ class User(db.Model):
         }
 
 
+class MoodEntry(db.Model):
+    """One private mood check-in per user per day (1 = very low, 5 = great).
+
+    `day` is the user's local date as YYYY-MM-DD, so "today" matches what
+    they see on their own clock. No free text is stored on purpose.
+    """
+    __tablename__ = "mood_entries"
+    __table_args__ = (db.UniqueConstraint("user_id", "day", name="uq_mood_user_day"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    day = db.Column(db.String(10), nullable=False)
+    mood = db.Column(db.Integer, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {"day": self.day, "mood": self.mood}
+
+
 class Message(db.Model):
     """A one-to-one chat message between two users."""
     __tablename__ = "messages"
@@ -55,8 +74,10 @@ class Message(db.Model):
     flag_reason = db.Column(db.String(200), nullable=True)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    # Set when the recipient opens the conversation; drives "Seen" and unread counts.
+    read_at = db.Column(db.DateTime, nullable=True)
 
-    sender = db.relationship("User", foreign_keys=[sender_id])
+    sender =db.relationship("User", foreign_keys=[sender_id])
     recipient = db.relationship("User", foreign_keys=[recipient_id])
 
     def to_dict(self):
@@ -72,4 +93,5 @@ class Message(db.Model):
             "flag_reason": self.flag_reason,
             "is_deleted": self.is_deleted,
             "created_at": self.created_at.isoformat(),
+            "read_at": self.read_at.isoformat() if self.read_at else None,
         }

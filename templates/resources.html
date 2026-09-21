@@ -12,6 +12,29 @@
         </p>
     </header>
 
+    <!-- Guided breathing -->
+    <section class="resource-section breathe-section" id="breathe">
+        <h2>🫁 Breathe with me</h2>
+        <div class="breathe-card">
+            <div class="breathe-stage">
+                <div class="breathe-ring"></div>
+                <div class="breathe-orb" id="breatheOrb">
+                    <span id="breatheLabel">Ready?</span>
+                    <small id="breatheCount"></small>
+                </div>
+            </div>
+            <div class="breathe-controls">
+                <div class="breathe-patterns" id="breathePatterns" role="group" aria-label="Breathing pattern">
+                    <button type="button" class="chip-btn selected" data-pattern="478">4-7-8</button>
+                    <button type="button" class="chip-btn" data-pattern="box">Box 4-4-4-4</button>
+                    <button type="button" class="chip-btn" data-pattern="calm">Calm 4-6</button>
+                </div>
+                <button type="button" class="btn btn-primary" id="breatheToggle">Start</button>
+                <p class="breathe-hint" id="breatheHint">Inhale 4, hold 7, exhale 8. Four rounds settle your nervous system.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Crisis hotlines -->
     <section class="resource-section">
         <h2>📞 Crisis Hotlines</h2>
@@ -129,4 +152,8 @@
         Please reach out to a licensed professional or emergency services if you need urgent help.
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/breathe.js') }}"></script>
 {% endblock %}

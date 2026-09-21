@@ -6,6 +6,7 @@
     <title>{% block title %}Anonymous Mental Health Support Chat{% endblock %}</title>
     <meta name="description" content="A safe, anonymous space for peer mental-health support." />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>" />
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     {% block head_extra %}{% endblock %}
 </head>
@@ -17,8 +18,10 @@
         </a>
         <div class="nav-links">
             <a href="/chat" class="nav-link">Chat</a>
+            <a href="/mood" class="nav-link">Check-in</a>
             <a href="/resources" class="nav-link">Resources</a>
             <a href="/admin" class="nav-link" id="adminNav" style="display:none;">Admin</a>
+            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch theme">☀️</button>
             <span id="userBadge" class="user-badge" style="display:none;"></span>
             <a href="/login" class="nav-link nav-cta" id="loginBtn">Sign in</a>
             <button class="nav-link logout-btn" id="logoutBtn" style="display:none;">Sign out</button>
@@ -26,6 +29,11 @@
     </nav>
 
     <main class="main">
+        <div class="aurora" aria-hidden="true">
+            <span class="blob b1"></span>
+            <span class="blob b2"></span>
+            <span class="blob b3"></span>
+        </div>
         {% block content %}{% endblock %}
     </main>
 
