@@ -6,11 +6,14 @@
     <div class="auth-card">
         <div class="auth-icon">🌱</div>
         <h2>Join anonymously</h2>
-        <p class="auth-sub">Pick a username and an avatar — that's all we need.</p>
+        <p class="auth-sub">We'll give you an anonymous name — no personal info needed.</p>
 
         <form id="registerForm" class="auth-form">
-            <label>Choose a username</label>
-            <input type="text" id="username" required minlength="3" maxlength="30" placeholder="e.g. quiet_river" autocomplete="off" />
+            <label>Your anonymous name</label>
+            <div class="username-suggest">
+                <input type="text" id="username" readonly />
+                <button type="button" id="shuffleUsername" class="btn btn-ghost" title="Get a different name">🔀</button>
+            </div>
 
             <label>Choose a password</label>
             <input type="password" id="password" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password" />
@@ -32,6 +35,14 @@
 {% block scripts %}
 <script>
 let selectedAvatar = null;
+
+async function loadSuggestedUsername() {
+    const res = await fetch("/api/auth/suggest-username");
+    const data = await res.json();
+    document.getElementById("username").value = data.username;
+}
+loadSuggestedUsername();
+document.getElementById("shuffleUsername").addEventListener("click", loadSuggestedUsername);
 
 async function loadAvatars() {
     const res = await fetch("/api/auth/avatars");
@@ -71,7 +82,10 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
         if (!res.ok) throw new Error(data.error || "Registration failed");
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        window.location.href = "/chat";
+        // The server may have assigned a different name than the last
+        // preview (e.g. if it was taken in the meantime) — show the real one.
+        showToast(`Your anonymous name is "${data.user.username}" — remember it to log back in!`, "info", 5000);
+        setTimeout(() => { window.location.href = "/chat"; }, 1500);
     } catch (ex) {
         err.textContent = ex.message;
         err.style.display = "block";

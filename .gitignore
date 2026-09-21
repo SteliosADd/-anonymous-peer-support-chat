@@ -22,3 +22,9 @@ instance/
 # Env
 .env
 .env.local
+
+# Runtime logs
+*.log
+
+# Test artifacts
+.pytest_cache/
